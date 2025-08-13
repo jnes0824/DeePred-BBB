@@ -19,6 +19,9 @@ The files contained in this repository are as follows:
 * Pandas
 * Keras
 * Tensorflow
+docker build -t deepred-bbb:0809 . 
+docker run -it -v $(pwd):/app --gpus all --name deepred-bbb deepred-bbb:0809 /bin/bash
+
 
 ## Usage
 
@@ -26,7 +29,7 @@ In order to run BBB permeability predictions with **DeePred-BBB**, save input st
 file (e.g. ``smiles.smi``). Remember to give a name or ID to each structure.
  
 1. Download this repository and ensure that all the files are present in the same folder when running the script.
-2. Run ``DeePred-BBB_Scrip.py``. 
+2. Run ``DeePred-BBB_Script.py``. 
   ```bash
   python DeePred-BBB_Script.py <folder>
   ```

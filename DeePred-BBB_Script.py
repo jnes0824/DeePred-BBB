@@ -51,30 +51,53 @@ def bbb(input_bbb: pd.DataFrame) -> np.ndarray:
     
 
 # Create main function to run descriptor calculation and predictions 
-def run_prediction(folder: str) -> None:
+def run_prediction(folder: str, smi_file: str) -> None:
     """Function to calculate descriptors (using PaDEL) and to generate
     predictions of BBB permeability for a set of compounds (SMILES).
 
     Args:
         folder (str): Folder to search for ".smi" file (multiple structures)
+        smi_file (str): Name of the ".smi" file with input structures
 
     Returns:
         CSV file with resulting BBB class (1 permeable; 0 non-permeable)
     """
-    # Define command for PaDEL
-    padel_cmd = [
-        'java', '-jar', 
-        os.path.join(path, 'PaDEL-Descriptor/PaDEL-Descriptor.jar'),
-        '-descriptortypes', 
-        os.path.join(path, 'PaDEL-Descriptor/descriptors.xml'), 
-        '-dir', folder, '-file', folder + '/PaDEL_features.csv', 
-        '-2d', '-fingerprints', '-removesalt', '-detectaromaticity', 
-        '-standardizenitro']
-    # Calculate features
-    subprocess.call(padel_cmd)
-    print("Features calculated")
+    # Count number of molecules in input
+    with open(os.path.join(folder, smi_file)) as f:
+        num_molecules_in = sum(1 for line in f if line.strip())
+    
+    padel_output_file = os.path.join(folder, "PaDEL_features.csv")
+
+    # Check if PaDEL features need to be calculated
+    run_padel = True
+    if os.path.exists(padel_output_file):
+        try:
+            num_molecules_out = len(pd.read_csv(padel_output_file))
+            if num_molecules_in == num_molecules_out:
+                print("Found existing 'PaDEL_features.csv' with matching size. Skipping PaDEL calculation.")
+                run_padel = False
+        except Exception:
+            # If file is corrupted or empty, it will fail, so we recalculate
+            pass
+
+
+    if run_padel:
+        # Define command for PaDEL
+        padel_cmd = [
+            'java', '-jar', 
+            os.path.join(path, 'PaDEL-Descriptor/PaDEL-Descriptor.jar'),
+            '-descriptortypes', 
+            os.path.join(path, 'PaDEL-Descriptor/descriptors.xml'), 
+            '-dir', folder, '-file', padel_output_file, 
+            '-2d', '-fingerprints', '-removesalt', '-detectaromaticity', 
+            '-standardizenitro']
+        # Calculate features
+        print("Calculating PaDEL features...")
+        subprocess.call(padel_cmd)
+        print("Features calculated")
+
     # Create Dataframe for calculated features
-    input_bbb =pd.read_csv(folder + "/PaDEL_features.csv")
+    input_bbb =pd.read_csv(padel_output_file)
     # Store name of each sample
     names = input_bbb['Name'].copy()
     # Remove names
@@ -98,9 +121,9 @@ if __name__ == "__main__":
     else:
         path = os.getcwd()
     # Verify existence of file with SMILES
-    exists = [fname for fname in os.listdir(path) if fname.endswith(".smi")]
-    if exists:
+    smi_files = [fname for fname in os.listdir(path) if fname.endswith(".smi")]
+    if smi_files:
         # Get predictions
-        run_prediction(path)        
+        run_prediction(path, smi_files[0])        
     else:
         raise FileNotFoundError("Input File NOT found")
